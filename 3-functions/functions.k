@@ -4,15 +4,19 @@ module FUNCTIONS-SYNTAX
     imports VARIABLES-SYNTAX
     imports ID-SYNTAX
 
-    // Function declaration
+    // Function declarations
+    syntax Decls ::= NeList{Decl, ""}
+
     syntax Decl ::= Id "(" Params ")" "=" Body
 
     syntax Params ::= List{Id, ","}
 
     syntax Body ::= Exp
 
+    syntax Id ::= "main" [token]
+
     // function call
-    syntax Exp ::= Id "(" Args ")" [strict(2)]
+    syntax Exp ::= Id "(" Args ")"
 
     syntax Args ::= List{Exp, ","}
 
@@ -28,8 +32,9 @@ module FUNCTIONS
 
     configuration
       <T>
-        <k> $PGM:Exp </k>    // contains expression to evaluate
+        <k> $PGM:Decls ~> main(.Args) </k>    // process declarations, then execute main
         <store> .Map </store> // stores bound variables
+        <args> .Map </args> // helper store for function arguments
         <functions> .Map </functions> // stores function declarations
         <call-stack> .List </call-stack> // stores continuations
       </T>
@@ -78,27 +83,48 @@ module FUNCTIONS
     rule <k> B:Bool ? _ : E => E ...</k>
          requires notBool B
 
-    // store function declarations
+    // store function declarations (startup)
     rule <k> F ( Ps:Params ) = EBody:Exp => . ... </k>
          <functions> M => M [ F <- #decl(Ps, EBody) ] </functions>
          requires notBool (F in_keys(M))
 
+    // process all declarations in order
+    rule <k> D:Decl DD:Decls ~> Rest => D ~> DD ~> Rest </k>
+
+    rule <k> .Decls ~> Rest => Rest </k>
+
     // function setup helpers
-    syntax KItem ::= #state(Map, K)
-                   | #bindParams(Params, Args)
-                   | #decl(Params, Body)
+    syntax KItem ::= #state ( Map, K )
+                   | #bindParams ( Params, Args )
+                   | #bindParam (Id, Exp)         [strict(2)]
+                   | #decl ( Params, Body )
 
     // function call, saving continuation and creating a local store
-    // NB, arguments are fully evaluated as they were declared strict
+    // NB, arguments need to be fully evaluated using the old store
     rule <k> F ( ARGS:Args ) ~> Cont => #bindParams(Ps, ARGS) ~> EBody </k>
-         <store> Store => .Map </store>
+         <store> Store </store>
+         <args> _ => .Map </args>
          <functions> ... F |-> #decl(Ps, EBody) ... </functions>
          <call-stack> Stack => ListItem(#state(Store, Cont)) Stack </call-stack>
-         // <call-stack> .List => ListItem(#state(Store, Cont)) ... </call-stack>
+
+    // construct function environment (store)
+    rule <k>
+           #bindParams ((P:Id, PS), (A, AS)) => #bindParam(P, A) ~> #bindParams(PS, AS)
+           ...
+         </k>
+
+    rule <k> #bindParam(P, A) => . ... </k>
+         <args> M => M [ P <- A ] </args>
+         requires isKResult(A)
+
+    rule <k> #bindParams(.Params , .Args) => . ...</k>
+         <store> _ => ArgStore </store>
+         <args> ArgStore => .Map </args>
 
     // function returning
     rule <k> E:Exp ~> .K => E ~> Cont </k>
          <store> _ => Store </store>
          <call-stack> ListItem(#state(Store, Cont)) Rest => Rest </call-stack>
+       requires isKResult(E)
 
 endmodule
