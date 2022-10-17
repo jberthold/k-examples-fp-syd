@@ -1,28 +1,37 @@
-requires "../1-expressions/expressions.md"
+requires "../2-variables/variables.k"
 
-module VARIABLES-SYNTAX
-    imports EXPRESSIONS-SYNTAX
+module FUNCTIONS-SYNTAX
+    imports VARIABLES-SYNTAX
     imports ID-SYNTAX
 
-    // Identifiers can be expressions
-    syntax Exp ::= Id
+    // Function declaration
+    syntax Decl ::= Id "(" Params ")" "=" Body
 
-    // syntactic construct for variables, and expression-if
-    syntax Exp ::= "let" Id "=" Exp "in" Exp [strict(2)]
-                  | Exp "?" Exp ":" Exp      [strict(1)]
+    syntax Params ::= List{Id, ","}
+
+    syntax Body ::= Exp
+
+    // function call
+    syntax Exp ::= Id "(" Args ")" [strict(2)]
+
+    syntax Args ::= List{Exp, ","}
+
 endmodule
 
-module VARIABLES
-    imports VARIABLES-SYNTAX
+module FUNCTIONS
+    imports FUNCTIONS-SYNTAX
     imports INT
     imports BOOL
     imports ID
     imports MAP
+    imports LIST
 
     configuration
       <T>
         <k> $PGM:Exp </k>    // contains expression to evaluate
         <store> .Map </store> // stores bound variables
+        <functions> .Map </functions> // stores function declarations
+        <call-stack> .List </call-stack> // stores continuations
       </T>
 
     // technicality to make the `seqstrict` above work
@@ -68,5 +77,28 @@ module VARIABLES
          requires B
     rule <k> B:Bool ? _ : E => E ...</k>
          requires notBool B
+
+    // store function declarations
+    rule <k> F ( Ps:Params ) = EBody:Exp => . ... </k>
+         <functions> M => M [ F <- #decl(Ps, EBody) ] </functions>
+         requires notBool (F in_keys(M))
+
+    // function setup helpers
+    syntax KItem ::= #state(Map, K)
+                   | #bindParams(Params, Args)
+                   | #decl(Params, Body)
+
+    // function call, saving continuation and creating a local store
+    // NB, arguments are fully evaluated as they were declared strict
+    rule <k> F ( ARGS:Args ) ~> Cont => #bindParams(Ps, ARGS) ~> EBody </k>
+         <store> Store => .Map </store>
+         <functions> ... F |-> #decl(Ps, EBody) ... </functions>
+         <call-stack> Stack => ListItem(#state(Store, Cont)) Stack </call-stack>
+         // <call-stack> .List => ListItem(#state(Store, Cont)) ... </call-stack>
+
+    // function returning
+    rule <k> E:Exp ~> .K => E ~> Cont </k>
+         <store> _ => Store </store>
+         <call-stack> ListItem(#state(Store, Cont)) Rest => Rest </call-stack>
 
 endmodule
