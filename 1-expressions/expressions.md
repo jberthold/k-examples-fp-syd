@@ -20,7 +20,7 @@ The main syntax module (unsurprisingly) defines the syntax while the main module
                | "(" Exp ")" [bracket]
 
     // Integer arithmetic syntax
-               > left:
+               > non-assoc:
                   "-" Exp     [neg, color(violet),seqstrict]
                > left:
                   Exp "*" Exp [mul, color(violet),seqstrict]
