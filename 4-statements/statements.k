@@ -13,14 +13,14 @@ module STATEMENTS-SYNTAX
 
     // statements and IMP control flow
     syntax Body ::= Stmt
-                | "{" Stmts "}"
 
     syntax Stmts ::= List{Stmt, ";"}
 
     syntax Stmt ::= "return" Exp                    [strict]
                 | Id "=" Exp                        [strict(2)]
-                | "if" "(" Exp ")" Body "else" Body [strict(1)]
-                | "while" "(" Exp ")" Body          // [strict(1)]
+                | "if" "(" Exp ")" Stmt "else" Stmt [strict(1)]
+                | "while" "(" Exp ")" Stmt
+                | "{" Stmts "}"
 
     syntax Id ::= "main" [token]
 
@@ -42,7 +42,7 @@ module STATEMENTS
 
     configuration
       <T>
-        <k> $PGM:Decls ~> main(.Args) </k>    // process declarations, then execute main
+        <k> $PGM:Decls </k>    // process declarations, then execute main
         <store> .Map </store> // stores bound variables
         <args> .Map </args> // helper store for function arguments
         <functions> .Map </functions> // stores function declarations
@@ -101,7 +101,8 @@ module STATEMENTS
     // process all declarations in order
     rule <k> D:Decl DD:Decls ~> Rest => D ~> DD ~> Rest </k>
 
-    rule <k> .Decls ~> Rest => Rest </k>
+    // execute main afterwards
+    rule <k> .Decls => main(.Args) ~> . </k>
 
     // function setup helpers
     syntax KItem ::= #state ( Map, K )
@@ -145,18 +146,16 @@ module STATEMENTS
     // assignment
     rule <k> X = V => . ...  </k>
          <store> M => M [ X <- V ] </store>
-         requires notBool X in_keys(M) andBool isKResult(V)
+         requires isKResult(V)
 
-    rule <k> if ( B ) S else _  => S ...  </k>
-         requires B
-    rule <k> if ( B ) _ else S  => S ...  </k>
-         requires notBool B
+    // using a built-in #if statement
+    rule <k> if ( B ) S1 else S2  => #if B #then S1 #else S2 #fi ...  </k>
 
-    // unrolling `while`, using a built-in #if
-    rule <k> while ( B ) S => #if B #then S ; while ( B ) S #else . #fi ... </k>
+    // unrolling `while` using if. Important that `while` is not strict!
+    rule <k> while ( B ) S => if (B) { S ; while ( B ) S } else { .Stmts } ... </k>
 
     // (early) return
-    rule <k> return V ~> _ => V ~> Cont ...  </k>
+    rule <k> return V ~> _ => V ~> Cont </k>
          <store> _ => M </store>
          <call-stack> ListItem( #state(M, Cont) ) Rest => Rest </call-stack>
          requires isKResult(V)
