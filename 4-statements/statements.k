@@ -1,0 +1,169 @@
+requires "../2-variables/variables.k"
+
+module STATEMENTS-SYNTAX
+    imports VARIABLES-SYNTAX
+    imports ID-SYNTAX
+
+    // Function declarations
+    syntax Decls ::= NeList{Decl, ""}
+
+    syntax Decl ::= Id "(" Params ")" "=" Body
+
+    syntax Params ::= List{Id, ","}
+
+    // statements and IMP control flow
+    syntax Body ::= Stmt
+                | "{" Stmts "}"
+
+    syntax Stmts ::= List{Stmt, ";"}
+
+    syntax Stmt ::= "return" Exp                    [strict]
+                | Id "=" Exp                        [strict(2)]
+                | "if" "(" Exp ")" Body "else" Body [strict(1)]
+                | "while" "(" Exp ")" Body          // [strict(1)]
+
+    syntax Id ::= "main" [token]
+
+    // function call
+    syntax Exp ::= Id "(" Args ")"
+
+    syntax Args ::= List{Exp, ","}
+
+endmodule
+
+module STATEMENTS
+    imports STATEMENTS-SYNTAX
+    imports INT
+    imports BOOL
+    imports ID
+    imports MAP
+    imports LIST
+    imports K-EQUAL
+
+    configuration
+      <T>
+        <k> $PGM:Decls ~> main(.Args) </k>    // process declarations, then execute main
+        <store> .Map </store> // stores bound variables
+        <args> .Map </args> // helper store for function arguments
+        <functions> .Map </functions> // stores function declarations
+        <call-stack> .List </call-stack> // stores continuations
+      </T>
+
+    // technicality to make the `seqstrict` above work
+    syntax Bool ::= isKResult(K) [function, symbol]
+    rule isKResult(_:Int)  => true
+    rule isKResult(_:Bool) => true
+    rule isKResult(_)      => false [owise]
+
+    // semantics of Int and Bool expressions
+    rule <k> - I1:Int => 0 -Int I1 ... </k>
+    rule <k> I1:Int + I2:Int => I1 +Int I2 ...</k>
+    rule <k> I1:Int - I2:Int => I1 -Int I2 ...</k>
+    rule <k> I1:Int * I2:Int => I1 *Int I2 ...</k>
+    rule <k> I1:Int / I2:Int => I1 /Int I2 ...</k> requires I2 =/=Int 0
+
+    rule <k> ! B1:Bool          => notBool B1 ...</k>
+    rule <k> B1:Bool && B2:Bool => B1 andBool B2 ...</k>
+    rule <k> B1:Bool ^ B2:Bool  => B1 xorBool B2 ...</k>
+    rule <k> B1:Bool || B2:Bool => B1 orBool B2 ...</k>
+    rule <k> B1:Bool -> B2:Bool => B1 impliesBool B2 ...</k>
+
+    // comparison operators for `Int` (returning `Bool`)
+
+    rule <k> I1:Int <  I2:Int => I1 <Int I2 ...</k>
+    rule <k> I1:Int <= I2:Int => I1 <=Int I2 ...</k>
+    rule <k> I1:Int >  I2:Int => I1 >Int I2 ...</k>
+    rule <k> I1:Int >= I2:Int => I1 >=Int I2 ...</k>
+    rule <k> I1:Int == I2:Int => I1 ==Int I2 ...</k>
+    rule <k> I1:Int != I2:Int => I1 =/=Int I2 ...</k>
+
+    // with `==` and `!=`, we _should_ be able to compare `Bool`.
+    rule <k> B1:Bool == B2:Bool => B1 ==Bool B2 ...</k>
+    rule <k> B1:Bool != B2:Bool => B1 =/=Bool B2 ...</k>
+
+    rule <k> X:Id => V ... </k>
+         <store> ... X |-> V ... </store>
+
+    rule <k> let X:Id = V in E => E </k>
+         <store> M => M [ X <- V ] </store>
+      requires notBool (X in_keys(M)) andBool isKResult(V)
+
+    rule <k> B:Bool ? E : _ => E ...</k>
+         requires B
+    rule <k> B:Bool ? _ : E => E ...</k>
+         requires notBool B
+
+    // store function declarations (startup)
+    rule <k> F ( Ps:Params ) = EBody:Body => . ... </k>
+         <functions> M => M [ F <- #decl(Ps, EBody) ] </functions>
+         requires notBool (F in_keys(M))
+
+    // process all declarations in order
+    rule <k> D:Decl DD:Decls ~> Rest => D ~> DD ~> Rest </k>
+
+    rule <k> .Decls ~> Rest => Rest </k>
+
+    // function setup helpers
+    syntax KItem ::= #state ( Map, K )
+                   | #bindParams ( Params, Args )
+                   | #bindParam (Id, Exp)         [strict(2)]
+                   | #decl ( Params, Body )
+
+    // function call, saving continuation and creating a local store
+    // NB, arguments need to be fully evaluated using the old store
+    rule <k> F ( ARGS:Args ) ~> Cont => #bindParams(Ps, ARGS) ~> EBody </k>
+         <store> Store </store>
+         <args> _ => .Map </args>
+         <functions> ... F |-> #decl(Ps, EBody) ... </functions>
+         <call-stack> Stack => ListItem(#state(Store, Cont)) Stack </call-stack>
+
+    // construct function environment (store)
+    rule <k>
+           #bindParams ((P:Id, PS), (A, AS)) => #bindParam(P, A) ~> #bindParams(PS, AS)
+           ...
+         </k>
+
+    rule <k> #bindParam(P, A) => . ... </k>
+         <args> M => M [ P <- A ] </args>
+         requires isKResult(A)
+
+    rule <k> #bindParams(.Params , .Args) => . ...</k>
+         <store> _ => ArgStore </store>
+         <args> ArgStore => .Map </args>
+
+    // function returning
+    rule <k> E:Exp ~> .K => E ~> Cont </k>
+         <store> _ => Store </store>
+         <call-stack> ListItem(#state(Store, Cont)) Rest => Rest </call-stack>
+       requires isKResult(E)
+
+    // statement block execution
+    rule <k> { SS:Stmts }    => SS ~> . ... </k>
+    rule <k> S:Stmt ; SS:Stmts => S ~> SS ...</k>
+    rule <k> .Stmts => . ... </k>
+
+    // assignment
+    rule <k> X = V => . ...  </k>
+         <store> M => M [ X <- V ] </store>
+         requires notBool X in_keys(M) andBool isKResult(V)
+
+    rule <k> if ( B ) S else _  => S ...  </k>
+         requires B
+    rule <k> if ( B ) _ else S  => S ...  </k>
+         requires notBool B
+
+    // unrolling `while`, using a built-in #if
+    rule <k> while ( B ) S => #if B #then S ; while ( B ) S #else . #fi ... </k>
+
+    // (early) return
+    rule <k> return V ~> _ => V ~> Cont ...  </k>
+         <store> _ => M </store>
+         <call-stack> ListItem( #state(M, Cont) ) Rest => Rest </call-stack>
+         requires isKResult(V)
+
+    // missing return
+    rule <k> .K => 0 ~> Cont </k>
+         <store> _ => M </store>
+         <call-stack> ListItem( #state(M, Cont) ) Rest => Rest </call-stack>
+
+endmodule
