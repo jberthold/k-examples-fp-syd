@@ -24,9 +24,9 @@ The main syntax module (unsurprisingly) defines the syntax while the main module
                   "-" Exp     [neg, color(violet),seqstrict]
                > left:
                   Exp "*" Exp [mul, color(violet),seqstrict]
-               |  Exp "/" Exp [mul, color(violet),seqstrict]
+               |  Exp "/" Exp [mul, color(violet),strict]
                > left:
-                  Exp "+" Exp [add, color(violet),seqstrict]
+                  Exp "+" Exp [add, color(violet),strict]
                |  Exp "-" Exp [add, color(violet),seqstrict]
     // Integer comparison syntax
                > non-assoc:
