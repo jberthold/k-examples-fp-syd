@@ -32,7 +32,7 @@ module FUNCTIONS
 
     configuration
       <T>
-        <k> $PGM:Decls ~> main(.Args) </k>    // process declarations, then execute main
+        <k> $PGM:Decls </k>    // process declarations, then execute main
         <store> .Map </store> // stores bound variables
         <args> .Map </args> // helper store for function arguments
         <functions> .Map </functions> // stores function declarations
@@ -91,7 +91,8 @@ module FUNCTIONS
     // process all declarations in order
     rule <k> D:Decl DD:Decls ~> Rest => D ~> DD ~> Rest </k>
 
-    rule <k> .Decls ~> Rest => Rest </k>
+    // execute main afterwards
+    rule <k> .Decls => main(.Args) ~> . </k>
 
     // function setup helpers
     syntax KItem ::= #state ( Map, K )

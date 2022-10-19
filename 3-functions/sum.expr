@@ -1,0 +1,4 @@
+sumrec(n) =
+  (n <= 0) ? 0 : (n + sumrec(n - 1))
+
+main() = sumrec(4)

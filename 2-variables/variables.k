@@ -60,7 +60,7 @@ module VARIABLES
     rule <k> X:Id => V ... </k>
          <store> ... X |-> V ... </store>
 
-    rule <k> let X:Id = V in E => E </k>
+    rule <k> let X:Id = V in E => E ... </k>
          <store> M => M [ X <- V ] </store>
       requires notBool (X in_keys(M)) andBool isKResult(V)
 
