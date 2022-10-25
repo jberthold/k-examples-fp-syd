@@ -19,6 +19,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says
 
+      - run: cat README.md
       - name: Check what we have
         run: |
           git status
