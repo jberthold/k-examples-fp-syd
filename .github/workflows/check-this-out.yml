@@ -13,20 +13,6 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Check out repository under $GITHUB_WORKSPACE
-      - name: Check this out!
-        uses: actions/checkout@v3
-        with:
-          # ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says but does not work
-          ref: ${{ env.GITHUB_REF_NAME }}
-          # ref: ${{ github.head_ref }}  # this is main, even for pull requests, contrary to what the manual says
-
-      - run: cat README.md
-      - name: Check what we have
-        run: |
-          git status
-          git show --stat
-          env
       - name: Print context from file
         run: |
           echo "Context: "
@@ -46,7 +32,21 @@ jobs:
         run: echo '${{ toJSON(matrix) }}'
       - name: Find out what to check out
         run: |
-          echo '${{ github.issue.pull_request.url }}'
-          echo '${{ toJSON(github) }}' | jq '.issue.pull_request.url'
-          curl ${{ github.issue.pull_request.url }} | jq '.head.sha'
-          echo "PR_HEAD=$(curl ${{ github.issue.pull_request.url }} | jq '.head.sha')"
+          echo '${{ github.event.issue.pull_request.url }}'
+          echo '${{ toJSON(github) }}' | jq '.event.issue.pull_request.url'
+          curl ${{ github.event.issue.pull_request.url }} | jq '.head.sha'
+          echo "PR_HEAD=$(curl ${{ github.event.issue.pull_request.url }} | jq '.head.sha')"
+      # Check out repository under $GITHUB_WORKSPACE
+      - name: Check this out!
+        uses: actions/checkout@v3
+        with:
+          # ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says but does not work
+          ref: ${{ env.GITHUB_REF_NAME }}
+          # ref: ${{ github.head_ref }}  # this is main, even for pull requests, contrary to what the manual says
+
+      - run: cat README.md
+      - name: Check what we have
+        run: |
+          git status
+          git show --stat
+          env
