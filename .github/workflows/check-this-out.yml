@@ -11,42 +11,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Print context from file
-        run: |
-          echo "Context: "
-          cat ${GITHUB_EVENT_PATH}
-      - name: Dump GitHub context
-        id: github_context_step
-        run: echo '${{ toJSON(github) }}'
-      - name: Dump job context
-        run: echo '${{ toJSON(job) }}'
-      - name: Dump steps context
-        run: echo '${{ toJSON(steps) }}'
-      - name: Dump runner context
-        run: echo '${{ toJSON(runner) }}'
-      - name: Dump strategy context
-        run: echo '${{ toJSON(strategy) }}'
-      - name: Dump matrix context
-        run: echo '${{ toJSON(matrix) }}'
       - name: Find out what to check out
+        id: get_pr_head
         run: |
-          echo '${{ github.event.issue.pull_request.url }}'
-          echo '${{ toJSON(github) }}' | jq '.event.issue.pull_request.url'
-          curl ${{ github.event.issue.pull_request.url }} | jq '.head.sha'
-          echo "PR_HEAD=$(curl ${{ github.event.issue.pull_request.url }} | jq '.head.sha')"
+          echo "PR_HEAD=$(curl -s ${{ github.event.issue.pull_request.url }} | jq '.head.sha')"
+          echo "PR_HEAD=$(curl -s ${{ github.event.issue.pull_request.url }} | jq '.head.sha')" >> $GITHUB_OUTPUT
+
       # Check out repository under $GITHUB_WORKSPACE
       - name: Check this out!
         uses: actions/checkout@v3
         with:
-          # ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says but does not work
-          ref: ${{ env.GITHUB_REF_NAME }}
-          # ref: ${{ github.head_ref }}  # this is main, even for pull requests, contrary to what the manual says
+          ref: ${{ steps.get_pr_head.outputs.PR_HEAD }}
 
       - run: cat README.md
       - name: Check what we have
         run: |
           git status
           git show --stat
-          env
