@@ -15,8 +15,8 @@ jobs:
       - name: Find out what to check out
         id: get_pr_head
         run: |
-          echo "PR_HEAD=$(curl -s ${{ github.event.issue.pull_request.url }} | jq '.head.sha')"
-          echo "PR_HEAD=$(curl -s ${{ github.event.issue.pull_request.url }} | jq '.head.sha')" >> $GITHUB_OUTPUT
+          echo "PR_HEAD=$(curl -s ${{ github.event.issue.pull_request.url }} | jq '.head.sha' | xargs echo)"
+          echo "PR_HEAD=$(curl -s ${{ github.event.issue.pull_request.url }} | jq '.head.sha' | xargs echo)" >> $GITHUB_OUTPUT
 
       # Check out repository under $GITHUB_WORKSPACE
       - name: Check this out!
