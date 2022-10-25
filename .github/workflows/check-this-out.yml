@@ -44,3 +44,9 @@ jobs:
         run: echo '${{ toJSON(strategy) }}'
       - name: Dump matrix context
         run: echo '${{ toJSON(matrix) }}'
+      - name: Find out what to check out
+        run: |
+          echo '${{ github.issue.pull_request.url }}'
+          echo '${{ toJSON(github) }}' | jq '.issue.pull_request.url'
+          curl ${{ github.issue.pull_request.url }} | jq '.head.sha'
+          echo "PR_HEAD=$(curl ${{ github.issue.pull_request.url }} | jq '.head.sha')"
