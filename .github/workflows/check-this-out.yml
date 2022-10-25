@@ -18,8 +18,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           # ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says but does not work
-          # ref: ${{ env.GITHUB_REF_NAME }} # this is main, even for pull requests
-          ref: ${{ github.head_ref }}
+          ref: ${{ env.GITHUB_REF_NAME }}
+          # ref: ${{ github.head_ref }}  # this is main, even for pull requests, contrary to what the manual says
 
       - run: cat README.md
       - name: Check what we have
@@ -27,5 +27,20 @@ jobs:
           git status
           git show --stat
           env
-           echo "Context: "
+      - name: Print context from file
+        run: |
+          echo "Context: "
           cat ${GITHUB_EVENT_PATH}
+      - name: Dump GitHub context
+        id: github_context_step
+        run: echo '${{ toJSON(github) }}'
+      - name: Dump job context
+        run: echo '${{ toJSON(job) }}'
+      - name: Dump steps context
+        run: echo '${{ toJSON(steps) }}'
+      - name: Dump runner context
+        run: echo '${{ toJSON(runner) }}'
+      - name: Dump strategy context
+        run: echo '${{ toJSON(strategy) }}'
+      - name: Dump matrix context
+        run: echo '${{ toJSON(matrix) }}'
