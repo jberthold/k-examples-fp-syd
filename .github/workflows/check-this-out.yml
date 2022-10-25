@@ -1,0 +1,26 @@
+name: Testing Only
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Check out repository under $GITHUB_WORKSPACE
+      - name: Check this out!
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says
+
+      - name: Check what we have
+        run: |
+          git status
+          git show --stat
+          env
