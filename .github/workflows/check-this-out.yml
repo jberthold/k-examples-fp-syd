@@ -17,7 +17,9 @@ jobs:
       - name: Check this out!
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says
+          # ref: ${{ github.event.pull_request.head.sha }} # this is what the manual says but does not work
+          # ref: ${{ env.GITHUB_REF_NAME }} # this is main, even for pull requests
+          ref: ${{ github.head_ref }}
 
       - run: cat README.md
       - name: Check what we have
