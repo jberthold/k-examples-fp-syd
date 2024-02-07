@@ -21,22 +21,22 @@ The main syntax module (unsurprisingly) defines the syntax while the main module
 
     // Integer arithmetic syntax
                > non-assoc:
-                  "-" Exp     [neg, color(violet),seqstrict]
+                  "-" Exp     [color(violet),seqstrict]
                > left:
-                  Exp "*" Exp [mul, color(violet),seqstrict]
-               |  Exp "/" Exp [mul, color(violet),strict]
+                  Exp "*" Exp [color(violet),seqstrict]
+               |  Exp "/" Exp [color(violet),strict]
                > left:
-                  Exp "+" Exp [add, color(violet),strict]
-               |  Exp "-" Exp [add, color(violet),seqstrict]
+                  Exp "+" Exp [color(violet),strict]
+               |  Exp "-" Exp [color(violet),seqstrict]
     // Integer comparison syntax
                > non-assoc:
-                  Exp "<"  Exp [comp,color(teal),seqstrict]
-               |  Exp "<=" Exp [comp,color(teal),seqstrict]
-               |  Exp ">"  Exp [comp,color(teal),seqstrict]
-               |  Exp ">=" Exp [comp,color(teal),seqstrict]
+                  Exp "<"  Exp [color(teal),seqstrict]
+               |  Exp "<=" Exp [color(teal),seqstrict]
+               |  Exp ">"  Exp [color(teal),seqstrict]
+               |  Exp ">=" Exp [color(teal),seqstrict]
     // comparison for both Bool and Int
-               |  Exp "==" Exp [comp,color(teal),seqstrict]
-               |  Exp "!=" Exp [comp,color(teal),seqstrict]
+               |  Exp "==" Exp [color(teal),seqstrict]
+               |  Exp "!=" Exp [color(teal),seqstrict]
     // Bool operators
                > left:
                   "!" Exp [color(blue),seqstrict]
